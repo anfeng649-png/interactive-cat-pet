@@ -1,0 +1,184 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Little Cat Pet</title><style>:root{--bg-top:#fffaf1;--bg-bottom:#f8dfb9;--ink:#5a432e;--panel:rgba(255,250,239,.8);--button:rgba(255,252,245,.95);--button-hover:#ffe7c2;--button-active:#ffd491}*{box-sizing:border-box}body{margin:0;min-height:100vh;overflow:hidden;background:radial-gradient(circle at 25% 18%,rgba(255,255,255,.95),transparent 35%),linear-gradient(180deg,var(--bg-top) 0%,#fff1d9 62%,var(--bg-bottom) 100%);font-family:ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--ink);user-select:none}#pet{position:fixed;left:100px;bottom:108px;width:min(430px,68vw);cursor:grab;touch-action:none;transform-origin:center bottom;z-index:10;filter:drop-shadow(0 20px 22px rgba(92,57,20,.16));transition:width .2s ease,filter .15s ease}#pet.dragging{cursor:grabbing;filter:drop-shadow(0 30px 28px rgba(92,57,20,.24))}#frameLayer{position:relative;width:100%;transform-origin:50% 100%;transition:transform .18s ease}#pet.walking #frameLayer{transform:scale(1.12)}#pet.playing #frameLayer{transform:scale(1.12)}#pet.grooming #frameLayer{transform:scale(.7105)}#pet.eating #frameLayer{transform:scale(1.24)}#catImage,#frameLayer img{display:block;width:100%;height:auto;pointer-events:none;background:transparent;border:none;border-radius:0;transform-origin:50% 92%}#pet.grooming #catImage{animation:gentleBob 1.05s ease-in-out infinite}#pet.sleeping #catImage{animation:breathe 3.4s ease-in-out infinite}#pet.turning #catImage{animation:turnSquash .24s ease-out}#pet.pop #catImage{animation:popIn .26s cubic-bezier(.34,1.56,.64,1)}@keyframes gentleBob{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(3px) rotate(.4deg)}}@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.018,.988) translateY(3px)}}@keyframes turnSquash{0%{transform:scale(1,1)}45%{transform:scale(.88,1.1)}100%{transform:scale(1,1)}}@keyframes popIn{0%{transform:scale(.96,1.04)}55%{transform:scale(1.025,.975)}100%{transform:scale(1,1)}}#bubble{position:absolute;left:50%;bottom:92%;transform:translateX(-50%) translateY(8px);padding:8px 12px;border-radius:999px;background:rgba(255,253,247,.94);border:1px solid rgba(130,95,48,.14);box-shadow:0 10px 24px rgba(105,72,29,.12);font-size:14px;color:#6a4a2b;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;white-space:nowrap}#bubble.show{opacity:1;transform:translateX(-50%) translateY(0)}.controls{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:9px;flex-wrap:wrap;justify-content:center;max-width:min(680px,calc(100vw - 24px));padding:10px;border-radius:999px;background:var(--panel);border:1px solid rgba(129,99,60,.15);backdrop-filter:blur(12px);box-shadow:0 12px 34px rgba(107,69,24,.10);z-index:20}button{appearance:none;border:1px solid rgba(129,99,60,.16);border-radius:999px;background:var(--button);color:#674729;padding:8px 13px;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(119,80,30,.05);transition:transform .12s ease,background .12s ease}button:hover{background:var(--button-hover);transform:translateY(-1px)}button:active{transform:translateY(1px) scale(.98)}button.active{background:var(--button-active)}@media(max-width:640px){#pet{width:min(360px,82vw);left:24px;bottom:128px}button{font-size:13px;padding:7px 11px}}</style></head><body><main id="pet" aria-label="interactive cat"><div id="bubble">meow</div><div id="frameLayer"><img id="catImage" alt="a hand-drawn orange and white cat" src="assets/cat_idle.png" draggable="false"/></div></main><nav class="controls" aria-label="cat actions"><button data-action="idle">Idle</button><button data-action="walk">Walk</button><button data-action="play">Play</button><button data-action="groom">Groom</button><button data-action="eat">Eat</button><button data-action="sleep">Sleep</button><button id="muteBtn" type="button" aria-label="mute sound" aria-pressed="false">🔊</button><button id="pauseBtn" type="button" aria-label="pause animation" aria-pressed="false">⏸</button><button id="stepBackBtn" type="button" aria-label="previous frame">◀</button><button id="stepFwdBtn" type="button" aria-label="next frame">▶</button></nav><script>
+const pet=document.getElementById('pet'),bubble=document.getElementById('bubble'),buttons=Array.from(document.querySelectorAll('button[data-action]'));
+const assets={
+  idle:['assets/idle/cat_idle_1.png','assets/idle/cat_idle_2.png','assets/idle/cat_idle_3.png','assets/idle/cat_idle_4.png','assets/idle/cat_idle_5.png','assets/idle/cat_idle_6.png','assets/idle/cat_idle_7.png'],
+  walk:['assets/walk/cat_walk_1.png','assets/walk/cat_walk_2.png','assets/walk/cat_walk_3.png','assets/walk/cat_walk_4.png','assets/walk/cat_walk_5.png','assets/walk/cat_walk_6.png','assets/walk/cat_walk_7.png','assets/walk/cat_walk_8.png'],
+  play:['assets/play/cat_play_1.png','assets/play/cat_play_2.png','assets/play/cat_play_3.png','assets/play/cat_play_4.png','assets/play/cat_play_5.png','assets/play/cat_play_6.png','assets/play/cat_play_7.png'],
+  groom:['assets/groom/cat_groom_1.png','assets/groom/cat_groom_2.png','assets/groom/cat_groom_3.png','assets/groom/cat_groom_4.png','assets/groom/cat_groom_5.png','assets/groom/cat_groom_6.png','assets/groom/cat_groom_7.png','assets/groom/cat_groom_8.png','assets/groom/cat_groom_9.png'],
+  eat:['assets/eat/cat_eat_1.png','assets/eat/cat_eat_2.png','assets/eat/cat_eat_3.png','assets/eat/cat_eat_4.png','assets/eat/cat_eat_5.png','assets/eat/cat_eat_6.png'],
+  sleep:['assets/cat_sleep.png']
+};
+const labels={idle:'meow',walk:'tap tap',play:'play!',groom:'purr...',eat:'nom nom',sleep:'zzZ'};
+let currentAction='idle',frameTimer=null,motionTimer=null,direction=1,draggedRecently=false;
+let paused=false,frameState={list:null,index:0};
+const pauseBtn=document.getElementById('pauseBtn'),stepBackBtn=document.getElementById('stepBackBtn'),stepFwdBtn=document.getElementById('stepFwdBtn');
+function updatePauseUI(){pauseBtn.textContent=paused?'▶':'⏸';pauseBtn.setAttribute('aria-pressed',String(paused))}
+pauseBtn.addEventListener('click',()=>{paused=!paused;updatePauseUI();if(!paused)showBubble('...')});
+function stepFrame(delta){
+  if(!frameState.list)return;
+  if(!paused){paused=true;updatePauseUI()}
+  frameState.index=(frameState.index+delta+frameState.list.length)%frameState.list.length;
+  catImage.style.transform='';
+  catImage.src=frameState.list[frameState.index];
+}
+stepBackBtn.addEventListener('click',()=>stepFrame(-1));
+stepFwdBtn.addEventListener('click',()=>stepFrame(1));
+window.addEventListener('keydown',event=>{
+  if(event.code==='Space'){event.preventDefault();paused=!paused;updatePauseUI()}
+  else if(event.code==='ArrowRight'){event.preventDefault();stepFrame(1)}
+  else if(event.code==='ArrowLeft'){event.preventDefault();stepFrame(-1)}
+});
+const sounds={
+  play:{src:'assets/audio/cat_meow.mp3',volume:1,loop:false},
+  eat:{src:'assets/audio/cat_eating.mp3',volume:1,loop:true},
+  groom:{src:'assets/audio/cat_purring.mp3',volume:0.35,loop:true}
+};
+const stepSoundSrc='assets/audio/cat_collar_step.mp3';
+function playStepSound(){
+  if(muted)return;
+  const a=new Audio(stepSoundSrc);
+  a.volume=(0.14+Math.random()*0.24)*0.75; // vary loudness a bit, like a bell brushing fur vs swinging free
+  a.playbackRate=0.82+Math.random()*0.4; // slightly different pitch each time
+  a.play().catch(()=>{});
+  if(Math.random()<0.15){ // rare quick double-clink, like a real tag knocking twice
+    setTimeout(()=>{
+      if(muted)return;
+      const b=new Audio(stepSoundSrc);
+      b.volume=(0.1+Math.random()*0.16)*0.75;
+      b.playbackRate=0.9+Math.random()*0.4;
+      b.play().catch(()=>{});
+    },60+Math.random()*70);
+  }
+}
+const soundCache={};
+let currentAudio=null,muted=false;
+const muteBtn=document.getElementById('muteBtn');
+muteBtn.addEventListener('click',()=>{
+  muted=!muted;
+  muteBtn.textContent=muted?'🔇':'🔊';
+  muteBtn.setAttribute('aria-pressed',String(muted));
+  if(muted)stopSound();else playSound(currentAction);
+});
+function stopSound(){if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}}
+function playSound(action){
+  if(muted)return;
+  const cfg=sounds[action];
+  if(!cfg)return;
+  if(!soundCache[action]){soundCache[action]=new Audio(cfg.src);soundCache[action].preload='auto'}
+  const audio=soundCache[action];
+  audio.loop=cfg.loop;
+  audio.volume=cfg.volume;
+  audio.currentTime=0;
+  audio.play().catch(()=>{}); // ignore rejection if not yet inside a user gesture
+  currentAudio=audio;
+}
+const catImage=document.getElementById('catImage');
+(function preloadAll(){Object.values(assets).flat().forEach(src=>{const img=new Image();img.src=src})})();
+
+// turn a one-way gesture (1..N) into a there-and-back loop (1..N..2) so it doesn't jump-cut every cycle
+function pingPong(frames){return frames.length<3?frames.slice():frames.concat(frames.slice(1,-1).reverse())}
+
+function setActiveButton(action){buttons.forEach(btn=>btn.classList.toggle('active',btn.dataset.action===action))}
+function showBubble(text){bubble.textContent=text||labels[currentAction]||'meow';bubble.classList.add('show');clearTimeout(showBubble.timeout);showBubble.timeout=setTimeout(()=>bubble.classList.remove('show'),1200)}
+function stopTimers(){clearTimeout(frameTimer);clearInterval(frameTimer);if(motionTimer)cancelAnimationFrame(motionTimer);clearTimeout(motionTimer);clearInterval(motionTimer);frameTimer=null;motionTimer=null}
+function resetClasses(){pet.classList.remove('idling','walking','playing','grooming','sleeping','eating','turning')}
+function pop(){pet.classList.remove('pop');void pet.offsetWidth;pet.classList.add('pop');clearTimeout(pop.timeout);pop.timeout=setTimeout(()=>pet.classList.remove('pop'),260)}
+
+// slow at the two turning points of a loop, quicker through the middle - a simple pendulum-style ease
+function easedDuration(idx,n,base,jitter){
+  const half=n/2||1;
+  const posInHalf=idx%half;
+  const phase=Math.cos(Math.PI*posInHalf/half);
+  const mult=0.7+0.55*Math.abs(phase);
+  const jitterMult=1+(Math.random()*2-1)*jitter;
+  return Math.max(40,Math.round(base*mult*jitterMult));
+}
+
+function playFrameLoop(frameList,baseInterval,jitter=0.15){
+  const n=frameList.length;
+  frameState.list=frameList;frameState.index=0;
+  catImage.src=frameList[0];
+  function schedule(idx){frameTimer=setTimeout(tick,easedDuration(idx,n,baseInterval,jitter))}
+  function tick(){
+    if(paused){frameTimer=setTimeout(tick,100);return}
+    frameState.index=(frameState.index+1)%n;catImage.src=frameList[frameState.index];schedule(frameState.index);
+  }
+  schedule(0);
+}
+
+function playWalk(){
+  const frames=assets.walk,n=frames.length;
+  const strideMs=1150; // nominal time for one full leg cycle, drives bob/speed only - independent of the leg image swap below
+  const baseSpeed=0.85; // px per ~16ms animation frame, tuned to match the original crossing speed on average
+  let turning=false,start=performance.now(),bellFired=false,bellWindowCenter=0.5,bellWindowWidth=0.08,bellSkip=false;
+
+  // leg image swap: its own eased+jittered schedule, purely visual
+  frameState.list=frames;frameState.index=0;
+  catImage.src=frames[0];
+  (function scheduleFrame(idx){
+    frameTimer=setTimeout(()=>{
+      if(paused){scheduleFrame(idx);return}
+      if(!turning){frameState.index=(frameState.index+1)%n;catImage.src=frames[frameState.index]}
+      scheduleFrame(frameState.index);
+    },easedDuration(idx,n,145,0.12));
+  })(0);
+
+  // movement + bob: continuous, time-based, decoupled from the leg image swap above
+  function loop(now){
+    if(!turning&&!paused){
+      const half=strideMs/2;
+      const t=(now-start)%strideMs;
+      const posInHalf=(t%half)/half;
+      const swing=Math.sin(Math.PI*posInHalf);
+      const speed=baseSpeed*(0.6+0.8*swing);
+      // the collar bell jingles once per half-stride, right around the peak of each swing
+      if(posInHalf>bellWindowCenter-bellWindowWidth&&posInHalf<bellWindowCenter+bellWindowWidth&&!bellFired){
+        bellFired=true;
+        if(!bellSkip)playStepSound();
+      }
+      else if(posInHalf<0.1){
+        bellFired=false;
+        bellWindowCenter=0.28+Math.random()*0.48; // shift where in the stride it rings next time, much looser now
+        bellWindowWidth=0.05+Math.random()*0.07;
+        bellSkip=Math.random()<0.38; // more steps land quiet now
+      }
+      const rect=pet.getBoundingClientRect();
+      let left=rect.left+direction*speed,hitEdge=false;
+      if(left<8){left=8;hitEdge=true}else if(left+rect.width>window.innerWidth-8){left=window.innerWidth-rect.width-8;hitEdge=true}
+      pet.style.left=`${left}px`;pet.style.top=`${rect.top}px`;pet.style.bottom='';
+      pet.style.transform=direction===1?'scaleX(1)':'scaleX(-1)';
+      catImage.style.transform=`translateY(${-swing*3}px)`;
+      if(hitEdge){
+        turning=true;pet.classList.add('turning');
+        setTimeout(()=>{direction*=-1;pet.classList.remove('turning');turning=false;start=performance.now()},240);
+      }
+    }
+    motionTimer=requestAnimationFrame(loop);
+  }
+  motionTimer=requestAnimationFrame(loop);
+}
+
+function setAction(action){
+  currentAction=action;stopTimers();stopSound();resetClasses();setActiveButton(action);pop();
+  catImage.style.transform='';
+  catImage.src=assets[action][0];
+  if(action==='idle'){pet.classList.add('idling');playFrameLoop(pingPong(assets.idle),420,0.18)}
+  else if(action==='walk'){pet.classList.add('walking');playWalk()}
+  else if(action==='play'){pet.classList.add('playing');playFrameLoop(pingPong(assets.play),235,0.15)}
+  else if(action==='groom'){pet.classList.add('grooming');playFrameLoop(pingPong(assets.groom),330,0.15)}
+  else if(action==='eat'){pet.classList.add('eating');playFrameLoop(pingPong(assets.eat),220,0.15)}
+  else if(action==='sleep'){pet.classList.add('sleeping')}
+  playSound(action);
+  showBubble(labels[action]);
+}
+
+buttons.forEach(button=>button.addEventListener('click',()=>setAction(button.dataset.action)));
+pet.addEventListener('click',()=>{if(draggedRecently)return;if(currentAction==='sleep')setAction('idle');else if(currentAction==='idle')setAction('play');else showBubble()});
+pet.addEventListener('mouseenter',()=>{if(currentAction!=='sleep')showBubble('purr...')});
+let drag={active:false,moved:false,offsetX:0,offsetY:0};
+pet.addEventListener('pointerdown',event=>{drag.active=true;drag.moved=false;pet.setPointerCapture(event.pointerId);const rect=pet.getBoundingClientRect();drag.offsetX=event.clientX-rect.left;drag.offsetY=event.clientY-rect.top;pet.classList.add('dragging');stopTimers()});
+pet.addEventListener('pointermove',event=>{if(!drag.active)return;drag.moved=true;const width=pet.offsetWidth,height=pet.offsetHeight;let left=event.clientX-drag.offsetX,top=event.clientY-drag.offsetY;left=Math.max(0,Math.min(window.innerWidth-width,left));top=Math.max(0,Math.min(window.innerHeight-height,top));pet.style.left=`${left}px`;pet.style.top=`${top}px`;pet.style.bottom='';pet.style.transform=direction===1?'scaleX(1)':'scaleX(-1)'});
+pet.addEventListener('pointerup',()=>{drag.active=false;setTimeout(()=>pet.classList.remove('dragging'),80);if(drag.moved){draggedRecently=true;showBubble('mrrp?');setTimeout(()=>draggedRecently=false,180);setTimeout(()=>setAction(currentAction),50)}});
+window.addEventListener('resize',()=>{const rect=pet.getBoundingClientRect();if(rect.left<0)pet.style.left='0px';if(rect.right>window.innerWidth)pet.style.left=Math.max(0,window.innerWidth-rect.width-8)+'px';if(pet.style.top){if(rect.top<0)pet.style.top='0px';if(rect.bottom>window.innerHeight){pet.style.top=Math.max(0,window.innerHeight-rect.height-90)+'px';pet.style.bottom=''}}});
+setAction('idle');
+</script></body></html>
